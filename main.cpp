@@ -12,6 +12,7 @@ class Obj {
 public:
     float density, radius, mass;
     Vector3 pos, vel;
+    Color color;
 
     Obj(Vector3 p, Vector3 v, float d, float r) {
         density = d;
@@ -20,6 +21,16 @@ public:
 
         pos = p;
         vel = v;
+        color = GREEN;
+    }
+    Obj(Vector3 p, Vector3 v, float d, float r, Color c) {
+        density = d;
+        radius = r;
+        calcMass();
+
+        pos = p;
+        vel = v;
+        color = c;
     }
 
     void calcMass() {
@@ -44,7 +55,7 @@ public:
     }
 
     void draw() {
-        DrawSphereEx(pos, radius, 64, 64, RED);
+        DrawSphereEx(pos, radius, 64, 64, color);
     }
 
 };
@@ -55,8 +66,6 @@ Camera camera = { 0 };
 std::list<Obj*> objs;
 
 
-static void UpdateDrawFrame();
-
 
 int main() {
     const int screenWidth = 800;
@@ -64,50 +73,47 @@ int main() {
 
     InitWindow(screenWidth, screenHeight, "raylib");
 
-    camera.position = (Vector3){ 100.0f, 10.0f, 8.0f };
+    camera.position = (Vector3){ 300.0f, 10.0f, 8.0f };
     camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
     camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
     camera.fovy = 60.0f;
     camera.projection = CAMERA_PERSPECTIVE;
 
-    objs.push_back(new Obj( {0}, {0}, 1e10, 3 ));
-    objs.push_back(new Obj( {50, 0, 0}, {0, 0.7f, 0.4f}, 1e3, 3 ));
+    objs.push_back(new Obj( {0}, {0}, 1e10, 50, YELLOW ));
+
+    Obj *earth = new Obj( {0, 0, 300}, {0, 5, 1}, 1e3, 5, GREEN );
+    objs.push_back(earth);
 
 
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
-        UpdateDrawFrame();
+        UpdateCamera(&camera, CAMERA_THIRD_PERSON);
+        // camera.target = earth->pos;
+        // camera.position = Vector3Add( earth->pos, { 10.0f, 10.0f, 8.0f } );
+
+        BeginDrawing();
+
+            ClearBackground(BLACK);
+
+            BeginMode3D(camera);
+                for ( Obj *o : objs ) {
+                    for ( Obj *oo : objs ) { if ( oo != o ) {
+                        o->gravity(*oo);
+                    }}
+                    o->move();
+                    o->draw();
+                }
+
+                DrawGrid(256, 64);
+
+            EndMode3D();
+
+        EndDrawing();
     }
 
     for ( Obj *o : objs ) delete o;
     CloseWindow();
 
     return 0;
-}
-
-// Update and draw game frame
-static void UpdateDrawFrame(void) {
-
-    UpdateCamera(&camera, CAMERA_THIRD_PERSON);
-
-    BeginDrawing();
-
-        ClearBackground(BLACK);
-
-        BeginMode3D(camera);
-            for ( Obj *o : objs ) {
-                for ( Obj *oo : objs ) { if ( oo != o ) {
-                    o->gravity(*oo);
-                }}
-                o->move();
-                o->draw();
-            }
-
-            DrawGrid(256, 64);
-
-        EndMode3D();
-
-    EndDrawing();
-
 }
